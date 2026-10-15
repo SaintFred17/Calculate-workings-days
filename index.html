@@ -1,0 +1,807 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#16191d"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Смена"><meta name="apple-mobile-web-app-status-bar-style" content="default"><link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="apple-touch-icon.png"><link rel="icon" href="icon-192.png"><style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style><title>Смена ассистента оператора</title>
+<style>
+/* Layout: one form column, sticky summary on the right; stacks on phones with a bottom total bar */
+:root{
+  --bg:#f6f7f8; --panel:#ffffff; --ink:#16191d; --muted:#6a727b; --line:#e2e5e8; --field:#ffffff; --hi:#f0f2f4;
+  --accent:#16191d; --bad:#b3261e;
+  --f-body:"Onest",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#121417; --panel:#181b1f; --ink:#e8ebee; --muted:#8f98a1; --line:#2a2f35; --field:#121417; --hi:#22262b; --accent:#e8ebee; --bad:#ff8a80; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#121417; --panel:#181b1f; --ink:#e8ebee; --muted:#8f98a1; --line:#2a2f35; --field:#121417; --hi:#22262b; --accent:#e8ebee; --bad:#ff8a80; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45;font-variant-numeric:tabular-nums}
+.wrap{max-width:1100px;margin:0 auto;padding-inline:16px;padding-block:24px 110px}
+h1{font-size:24px;font-weight:600;margin:0 0 4px;letter-spacing:-.01em}
+.sub{color:var(--muted);margin:0 0 20px;max-width:62ch}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:20px;align-items:start}
+@media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}}
+.col{display:flex;flex-direction:column;gap:12px;min-width:0}
+section.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:18px;display:flex;flex-direction:column;gap:14px}
+h2{margin:0;font-size:15px;font-weight:600}
+.head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+label.f{display:flex;flex-direction:column;gap:5px;min-width:0}
+label.f>span{font-size:13px;color:var(--muted)}
+input,select,textarea{font:inherit;color:var(--ink);background:var(--field);border:1px solid var(--line);border-radius:6px;padding:9px 10px;width:100%;min-width:0}
+input[type=checkbox]{width:18px;height:18px;padding:0;accent-color:var(--accent);flex:none;margin:0}
+input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible{outline:2px solid var(--ink);outline-offset:1px}
+.hint{font-size:13px;color:var(--muted);margin:0}
+.warn{font-size:13px;color:var(--bad);margin:0}
+.check{display:flex;align-items:center;gap:10px;cursor:pointer}
+.opt{display:flex;flex-direction:column;gap:10px}
+.more{display:flex;flex-direction:column;gap:10px;margin-left:28px;padding-left:14px;border-left:1px solid var(--line)}
+.receipt{display:grid;grid-template-columns:110px minmax(0,1fr) 36px;gap:8px;align-items:center}
+.custom{display:grid;grid-template-columns:minmax(0,1fr) 110px 36px;gap:8px;align-items:center}
+@media (max-width:480px){.more{margin-left:8px}.receipt{grid-template-columns:90px minmax(0,1fr) 32px}}
+button{font:inherit;cursor:pointer;border-radius:6px;border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:9px 12px}
+button.primary{background:var(--ink);color:var(--panel);border-color:var(--ink);font-weight:500}
+button.link{border:0;background:none;padding:0;color:var(--muted);text-decoration:underline;text-underline-offset:3px;align-self:flex-start}
+button.x{padding:6px 0;width:36px;color:var(--muted)}
+button.danger{color:var(--bad)}
+button:disabled{opacity:.45;cursor:default}
+.btns{display:flex;flex-wrap:wrap;gap:8px}
+.projbar{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:end}
+/* shift list */
+.shifts{display:flex;flex-direction:column}
+.sh{display:grid;grid-template-columns:22px minmax(0,1fr) auto auto;gap:10px;align-items:center;padding:9px 6px;border-top:1px solid var(--line);border-radius:4px}
+.sh:first-child{border-top:0}
+.sh.on{background:var(--hi)}
+.sh .d{min-width:0}
+.sh .d b{font-weight:500}
+.sh .d span{display:block;font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.sh .s{white-space:nowrap}
+.sh .acts{display:flex;gap:4px}
+.sh .acts button{padding:5px 8px;font-size:13px}
+.ptotal{display:flex;justify-content:space-between;gap:10px;border-top:1px solid var(--ink);padding-top:10px;font-weight:600}
+aside.sum{position:sticky;top:calc(env(safe-area-inset-top,0px) + 16px);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:18px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.meta{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 12px;font-size:13px;margin:0}
+.meta dt{color:var(--muted)} .meta dd{margin:0;text-align:right;overflow-wrap:anywhere}
+table.br{width:100%;border-collapse:collapse;font-size:13px}
+table.br td{padding:8px 0;border-top:1px solid var(--line);vertical-align:top}
+table.br td.s{text-align:right;white-space:nowrap;padding-left:10px}
+table.br .q{display:block;color:var(--muted);font-size:12px}
+.total{display:flex;justify-content:space-between;align-items:baseline;gap:10px;border-top:1px solid var(--ink);padding-top:12px}
+.total .v{font-weight:600;font-size:24px}
+.actions{display:flex;flex-wrap:wrap;gap:8px}
+.actions button{flex:1 1 130px}
+.status{font-size:13px;color:var(--muted);min-height:1.2em;margin:0}
+.bar{display:none}
+@media (max-width:900px){
+  aside.sum{position:static}
+  .bar{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:5;background:var(--panel);border-top:1px solid var(--line);padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));align-items:center;justify-content:space-between;gap:12px}
+  .bar .v{font-weight:600;font-size:19px}
+}
+.contents{display:contents}
+</style>
+</head><body>
+
+<div class="wrap">
+  <h1>Расчёт смены</h1>
+  <p class="sub">Разовая смена или проект на много смен. В проекте должность, ставки и продакшн сохраняются, а каждую смену вы добавляете со своими доплатами.</p>
+
+  <div class="grid">
+    <div class="col">
+
+      <section class="card">
+        <div class="projbar">
+          <label class="f"><span>Проект</span><select id="projSel"><option value="">Разовая смена</option></select></label>
+          <button id="newProj" type="button">+ Новый проект</button>
+        </div>
+        <div class="row">
+          <label class="f"><span id="projectLbl">Название проекта</span><input id="project" type="text" placeholder="Название проекта"></label>
+          <label class="f"><span>Продакшн / продюсер</span><input id="producer" type="text" placeholder="Компания, имя продюсера"></label>
+        </div>
+        <p class="hint" id="saveState"></p>
+        <div class="btns"><button class="link" id="exportBtn" type="button">Экспорт проектов</button><button class="link" id="importBtn" type="button">Импорт проектов</button><input type="file" id="importFile" accept=".json,application/json" hidden></div>
+        <div class="btns" id="projActs" hidden><button class="link danger" id="delProj" type="button">Удалить проект</button></div>
+      </section>
+
+      <section class="card">
+        <h2>Должность и ставка</h2>
+        <label class="f"><span>Должность</span><input id="role" type="text" list="roleList" placeholder="Например: 1st AC"></label>
+        <datalist id="roleList"><option value="1st AC"><option value="2nd AC"><option value="1-й ассистент оператора"><option value="2-й ассистент оператора"></datalist>
+        <div class="row">
+          <label class="f"><span>Ставка за смену, ₽</span><input id="r_base" type="number" min="0" step="500" inputmode="decimal"></label>
+          <label class="f"><span>Переработка, ₽/ч</span><input id="r_ot1" type="number" min="0" step="100" inputmode="decimal"></label>
+          <label class="f"><span>Дневная смена, ч</span><input id="r_dayHours" type="number" min="1" step="0.5" inputmode="decimal"></label>
+          <label class="f"><span>Ночная смена, ч</span><input id="r_nightHours" type="number" min="1" step="0.5" inputmode="decimal"></label>
+        </div>
+        <div class="opt">
+          <label class="check"><input id="prog" type="checkbox"> Прогрессивная переработка</label>
+          <div class="more" id="prog_box" hidden>
+            <div class="row">
+              <label class="f"><span>Вторая ставка с часа №</span><input id="r_ot2From" type="number" min="1" step="1" inputmode="numeric"></label>
+              <label class="f"><span>Вторая ставка, ₽/ч</span><input id="r_ot2" type="number" min="0" step="100" inputmode="decimal"></label>
+            </div>
+            <div class="row">
+              <label class="f"><span>Третья ставка с часа №</span><input id="r_ot3From" type="number" min="1" step="1" inputmode="numeric"></label>
+              <label class="f"><span>Третья ставка, ₽/ч</span><input id="r_ot3" type="number" min="0" step="100" inputmode="decimal"></label>
+            </div>
+          </div>
+        </div>
+        <button class="link" id="resetRates" type="button">Вернуть ставки из условий от 01.04.2024</button>
+      </section>
+
+      <section class="card" id="shiftsCard" hidden>
+        <div class="head"><h2>Смены проекта</h2><button class="link" id="selAll" type="button">Выбрать все</button></div>
+        <div class="shifts" id="shifts"></div>
+        <div class="ptotal"><span id="selCount">Выбрано: 0</span><span id="selTotal">0 ₽</span></div>
+        <div class="btns">
+          <button class="primary" id="sumPdf" type="button">Общий PDF за выбранные смены</button>
+          <button id="newShift" type="button">+ Новая смена</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2 id="shiftTitle">Смена</h2>
+        <div class="row">
+          <label class="f"><span>Тип дня</span>
+            <select id="dayType">
+              <option value="shoot">Съёмочная смена</option>
+              <option value="test">Тесты камеры / осмотр объекта</option>
+              <option value="transfer">Трансфер (командировка)</option>
+              <option value="idle">Простой в командировке (с 3-го дня)</option>
+              <option value="cancelWeather">Отмена: weather day</option>
+              <option value="cancelOther">Отмена: прочие причины</option>
+            </select>
+          </label>
+          <label class="f"><span>Дата</span><input id="date" type="date"></label>
+        </div>
+        <div class="opt" id="fixedWrap">
+          <label class="check"><input id="fixed" type="checkbox"> Фиксированная оплата (аккорд)</label>
+          <div class="more" id="fixed_box" hidden>
+            <label class="f"><span>Сумма за смену, ₽</span><input id="fixedAmt" type="number" min="0" step="500" inputmode="decimal"></label>
+            <p class="hint">Сумма заменяет ставку, переработку, обеды, разрыв и двойной тариф. Доплаты начисляются как обычно.</p>
+          </div>
+        </div>
+
+        <div class="contents" id="timedBlock">
+          <div class="row">
+            <label class="f"><span>Вызов</span><input id="start" type="time"></label>
+            <label class="f"><span>Выезд</span><input id="end" type="time"></label>
+            <label class="f"><span>Режим</span>
+              <select id="mode">
+                <option value="auto">Авто по времени вызова</option>
+                <option value="day">Дневная</option>
+                <option value="night">Ночная</option>
+              </select>
+            </label>
+          </div>
+          <label class="check"><input id="plusDay" type="checkbox"> Смена длиннее суток (+24 ч)</label>
+          <p class="hint" id="timeHint"></p>
+        </div>
+
+        <div class="contents" id="cancelBlock" hidden>
+          <div class="row">
+            <label class="f"><span>За сколько часов предупредили</span><input id="notice" type="number" min="0" step="0.5" inputmode="decimal"></label>
+            <label class="f" id="midPctWrap"><span>% при уведомлении за 6–20 ч</span><input id="midPct" type="number" min="0" max="100" step="5"></label>
+          </div>
+          <label class="check" id="arrivedWrap"><input id="arrived" type="checkbox"> Группа уже прибыла на площадку / погрузку</label>
+          <p class="hint" id="cancelHint"></p>
+        </div>
+      </section>
+
+      <section class="card" id="condCard">
+        <h2>Условия смены</h2>
+        <div class="contents" id="timedOpts">
+          <div class="opt">
+            <label class="check"><input id="lateLunch" type="checkbox"> Поздний обед</label>
+            <div class="more" id="lateLunch_box" hidden>
+              <label class="f"><span>Часов переработки за поздний обед</span><input id="lateLunchH" type="number" min="0" step="0.5" inputmode="decimal"></label>
+              <p class="hint">По условиям: обед после 8-го часа — 1 ч, после 12-го часа — 2 ч.</p>
+            </div>
+          </div>
+          <div class="opt">
+            <label class="check"><input id="curLunch" type="checkbox"> Текущий обед</label>
+            <div class="more" id="curLunch_box" hidden>
+              <label class="f"><span>Доплата за текущий обед, ч переработки</span><input id="curLunchH" type="number" min="0" step="0.5" inputmode="decimal"></label>
+              <p class="hint">По условиям текущий обед оплачивается на 1 ч больше, чем часовой.</p>
+            </div>
+          </div>
+          <div class="opt">
+            <label class="check"><input id="gap" type="checkbox"> Разрыв между сменами</label>
+            <div class="more" id="gap_box" hidden>
+              <div class="row">
+                <label class="f"><span>Положенный отдых, ч</span><input id="gapNorm" type="number" min="0" step="0.5" inputmode="decimal"></label>
+                <label class="f"><span>Фактический отдых, ч</span><input id="gapFact" type="number" min="0" step="0.5" inputmode="decimal"></label>
+                <label class="f"><span>Час разрыва, ₽</span><input id="r_gap" type="number" min="0" step="100" inputmode="decimal"></label>
+              </div>
+              <p class="hint" id="gapHint"></p>
+            </div>
+          </div>
+        </div>
+        <label class="check"><input id="day7" type="checkbox"> 7-й и следующий день рабочей недели (×2)</label>
+        <label class="check"><input id="holiday" type="checkbox"> Государственный праздник (×2)</label>
+      </section>
+
+      <section class="card">
+        <h2>Доплаты</h2>
+        <div id="extras" class="col"></div>
+        <div class="opt">
+          <label class="check"><input id="taxi" type="checkbox"> Такси</label>
+          <div class="more" id="taxi_box" hidden>
+            <p class="hint">Сумма и ссылка на чек из приложения такси. Ссылки попадут в PDF.</p>
+            <div id="receipts" class="col" style="gap:8px"></div>
+            <button class="link" id="addReceipt" type="button">+ Ещё чек</button>
+          </div>
+        </div>
+        <div id="customs" class="col" style="gap:8px"></div>
+        <button class="link" id="addCustom" type="button">+ Своя строка</button>
+      </section>
+
+      <section class="card">
+        <h2>Для PDF</h2>
+        <div class="row">
+          <label class="f"><span>Ваше имя</span><input id="name" type="text" placeholder="Имя Фамилия"></label>
+          <label class="f"><span>Телефон / контакт</span><input id="contact" type="text" placeholder="+7 …"></label>
+        </div>
+        <label class="f"><span>Комментарий к смене</span><textarea id="note" rows="3" placeholder="Например: реквизиты, детали смены"></textarea></label>
+      </section>
+    </div>
+
+    <aside class="sum" aria-live="polite">
+      <dl class="meta" id="meta"></dl>
+      <table class="br"><tbody id="lines"></tbody></table>
+      <div id="warnings"></div>
+      <div class="total"><span>Итого за смену</span><span class="v" id="total">0 ₽</span></div>
+      <div class="actions">
+        <button class="primary" id="saveShift" type="button" hidden>Сохранить в проект</button>
+        <button id="pdfBtn" type="button">PDF смены</button>
+        <button id="copyBtn" type="button">Скопировать текст</button>
+        <button class="primary" id="shareBtn" type="button" hidden>Отправить / сохранить файл</button>
+      </div>
+      <p class="status" id="status"></p>
+    </aside>
+  </div>
+</div>
+
+<div class="bar"><span class="v" id="barTotal">0 ₽</span><button class="primary" id="barBtn" type="button">PDF смены</button></div>
+
+<script src="pdfmake.min.js"></script>
+<script src="vfs_fonts.js"></script>
+<script>
+const OFFLINE = true;
+const DEFAULT_RATES = {base:18000, ot1:3500, dayHours:10, nightHours:9, ot2From:19, ot2:7000, ot3From:24, ot3:14000, gap:3500};
+const RATE_KEYS = Object.keys(DEFAULT_RATES);
+const EXTRAS = [
+  {id:'load', label:'Погрузка / разгрузка', field:'Стоимость погрузки / разгрузки, ₽', def:14000},
+  {id:'bag', label:'Ассистентская сумка', field:'Стоимость ассистентской сумки, ₽', def:5000},
+  {id:'wagen', label:'Камерваген', field:'Стоимость камервагена, ₽'},
+  {id:'perdiem', label:'Суточные', field:'Сумма суточных, ₽'},
+];
+const DAY_NAMES = {shoot:'Съёмочная смена',test:'Тесты камеры / осмотр объекта',transfer:'Трансфер (командировка)',idle:'Простой в командировке',cancelWeather:'Отмена смены (weather day)',cancelOther:'Отмена смены'};
+const PROJECT_IDS = ['role',...RATE_KEYS.map(k=>'r_'+k),'prog','project','producer'];
+const SHIFT_IDS = ['dayType','date','start','end','mode','plusDay','notice','midPct','arrived','lateLunch','lateLunchH','curLunch','curLunchH','gap','gapNorm','gapFact','day7','holiday','taxi','note','fixed','fixedAmt',...EXTRAS.flatMap(x=>['ex_'+x.id,'exa_'+x.id])];
+const PROFILE_IDS = ['name','contact'];
+
+const $ = id => document.getElementById(id);
+const local = {
+  get(k,d){try{const v=localStorage.getItem('acshift2:'+k);return v?JSON.parse(v):d}catch(e){return d}},
+  set(k,v){try{localStorage.setItem('acshift2:'+k,JSON.stringify(v))}catch(e){}},
+  del(k){try{localStorage.removeItem('acshift2:'+k)}catch(e){}}
+};
+let customs = [], receipts = [];
+let projects = [];          // [{id, kind:'project', name, producer, role, rates, prog, shifts:[]}]
+let cur = null;             // selected project or null (one-off)
+let editingId = null;       // id of the shift being edited inside cur
+let selected = new Set();   // shift ids picked for the summary PDF
+let backend = null;
+
+const num = v => {const n=parseFloat(String(v??'').replace(',','.').replace(/\s/g,''));return isFinite(n)?n:0};
+const rub = n => new Intl.NumberFormat('ru-RU',{maximumFractionDigits:2}).format(Math.round(n*100)/100)+' ₽';
+const hrs = h => String(h).replace('.',',')+' ч';
+const fmtDur = m => Math.floor(m/60)+' ч '+String(m%60).padStart(2,'0')+' мин';
+const fmtDate = s => {if(!s)return '—';const [y,m,d]=s.split('-');return d+'.'+m+'.'+y};
+const todayIso = () => {const n=new Date();return n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0')};
+const roundHalf = mins => Math.ceil(mins/30)*0.5; // 1–30 мин = 0,5 ч; 31–60 мин = 1 ч
+const overlap = (a,b,c,d) => Math.max(0,Math.min(b,d)-Math.max(a,c));
+const R = () => Object.fromEntries(RATE_KEYS.map(k=>[k,num($('r_'+k).value)]));
+const esc = s => String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const clone = o => JSON.parse(JSON.stringify(o));
+const status = t => $('status').textContent = t;
+
+/* ---------- form builders ---------- */
+function buildExtras(){
+  $('extras').innerHTML = EXTRAS.map(x=>`<div class="opt"><label class="check"><input id="ex_${x.id}" type="checkbox"> ${x.label}</label><div class="more" id="ex_${x.id}_box" hidden><label class="f"><span>${x.field}</span><input id="exa_${x.id}" type="number" min="0" step="100" inputmode="decimal"></label></div></div>`).join('');
+  EXTRAS.forEach(x=>$('ex_'+x.id).addEventListener('change',e=>{
+    if(e.target.checked && x.def && !$('exa_'+x.id).value) $('exa_'+x.id).value=x.def;
+    update(); if(e.target.checked) $('exa_'+x.id).focus();
+  }));
+}
+function buildList(boxId, arr, cls, fields){
+  const box=$(boxId); box.innerHTML='';
+  arr.forEach((it,i)=>{
+    const row=document.createElement('div'); row.className=cls;
+    fields.forEach(([k,type,ph])=>{const inp=document.createElement('input');inp.type=type;inp.placeholder=ph;inp.id=boxId+'_'+k+'_'+i;inp.value=it[k]||'';if(type==='number'){inp.min='0';inp.step='10';inp.inputMode='decimal'}inp.addEventListener('input',()=>{it[k]=inp.value;update()});row.appendChild(inp)});
+    const x=document.createElement('button');x.type='button';x.className='x';x.textContent='✕';x.setAttribute('aria-label','Удалить');
+    x.addEventListener('click',()=>{arr.splice(i,1);buildList(boxId,arr,cls,fields);update()});
+    row.appendChild(x); box.appendChild(row);
+  });
+}
+const RECEIPT_FIELDS=[['amount','number','₽'],['url','url','Ссылка на чек']];
+const CUSTOM_FIELDS=[['label','text','Название'],['amount','number','₽']];
+const buildReceipts=()=>buildList('receipts',receipts,'receipt',RECEIPT_FIELDS);
+const buildCustoms=()=>buildList('customs',customs,'custom',CUSTOM_FIELDS);
+
+const readIds = ids => Object.fromEntries(ids.map(id=>{const el=$(id);return [id,el.type==='checkbox'?el.checked:el.value]}));
+function writeIds(ids, obj){ids.forEach(id=>{if(!(id in obj))return;const el=$(id);if(el.type==='checkbox')el.checked=!!obj[id];else el.value=obj[id]??''})}
+
+function shiftDefaults(prev){
+  const d={dayType:'shoot',date:todayIso(),start:'08:00',end:'20:00',mode:'auto',plusDay:false,notice:'',midPct:'50',arrived:false,lateLunch:false,lateLunchH:'1',curLunch:false,curLunchH:'1',gap:false,gapNorm:'10',gapFact:'',day7:false,holiday:false,taxi:false,note:'',fixed:false,fixedAmt:'',customs:[],receipts:[]};
+  EXTRAS.forEach(x=>{d['ex_'+x.id]=false;d['exa_'+x.id]=''});
+  if(prev){d.start=prev.start||d.start;d.end=prev.end||d.end;d.mode=prev.mode||d.mode;d.fixed=!!prev.fixed;d.fixedAmt=prev.fixedAmt||''}
+  return d;
+}
+const readShift = () => Object.assign(readIds(SHIFT_IDS),{customs:clone(customs),receipts:clone(receipts)});
+function writeShift(s){
+  writeIds(SHIFT_IDS,s);
+  customs=clone(s.customs||[]); receipts=s.receipts&&s.receipts.length?clone(s.receipts):[{amount:'',url:''}];
+  buildCustoms(); buildReceipts();
+}
+function projectFieldsFromDom(){
+  return {name:$('project').value.trim(),producer:$('producer').value.trim(),role:$('role').value.trim(),rates:R(),prog:$('prog').checked};
+}
+function projectToDom(p){
+  $('project').value=p.name||''; $('producer').value=p.producer||''; $('role').value=p.role||'';
+  RATE_KEYS.forEach(k=>$('r_'+k).value=(p.rates&&p.rates[k]!=null)?p.rates[k]:DEFAULT_RATES[k]);
+  $('prog').checked=!!p.prog;
+}
+
+/* ---------- calculation ---------- */
+function compute(){
+  const r=R(), t=$('dayType').value, lines=[], warn=[], meta=[];
+  const role=$('role').value.trim();
+  if(role) meta.push(['Должность',role]);
+  meta.push(['Дата',fmtDate($('date').value)]);
+  if($('project').value.trim()) meta.push(['Проект',$('project').value.trim()]);
+  if($('producer').value.trim()) meta.push(['Продакшн',$('producer').value.trim()]);
+  meta.push(['Тип дня',DAY_NAMES[t]]);
+  const timed = t==='shoot'||t==='test';
+  let timeStr='';
+  const fixed = $('fixed').checked && (timed||t==='transfer');
+  const fixedLine = () => {const a=num($('fixedAmt').value); if(!a) warn.push('Укажите сумму фиксированной оплаты.'); lines.push({label:'Фиксированная оплата за смену (аккорд)',qty:'1',rate:a,sum:a})};
+
+  if(timed){
+    const s=$('start').value, e=$('end').value;
+    if(fixed) fixedLine();
+    if(!s||!e){ if(!fixed) warn.push('Укажите время вызова и выезда.'); }
+    else{
+      const [sh,sm]=s.split(':').map(Number),[eh,em]=e.split(':').map(Number);
+      let sMin=sh*60+sm, eMin=eh*60+em; if(eMin<=sMin) eMin+=1440; if($('plusDay').checked) eMin+=1440;
+      const dur=eMin-sMin;
+      const mode=$('mode').value==='auto'?((sh>=4&&sh<16)?'day':'night'):$('mode').value;
+      const B=mode==='day'?r.dayHours:r.nightHours;
+      const otH=roundHalf(Math.max(0,dur-B*60));
+      timeStr=`${s} – ${e}${eMin>=1440?' (+1)':''}`;
+      meta.push(['Время',timeStr]);
+      meta.push(['Длительность',fmtDur(dur)]);
+      if(fixed) $('timeHint').textContent=`Фактически ${fmtDur(dur)}. При фиксированной оплате переработка не начисляется.`;
+      else {
+      $('timeHint').textContent=`${mode==='day'?'Дневная':'Ночная'} смена ${hrs(B)} с обедом. Фактически ${fmtDur(dur)}, переработка с округлением ${hrs(otH)}.`;
+      lines.push({label:`Смена, ${mode==='day'?'дневная':'ночная'}, ${hrs(B)} с обедом`,qty:'1',rate:r.base,sum:r.base,shift:true});
+      if(otH){
+        if($('prog').checked){
+          const end=B+otH, t2=r.ot2From-1, t3=r.ot3From-1;
+          const h1=overlap(B,end,B,t2), h2=overlap(B,end,Math.max(B,t2),t3), h3=overlap(B,end,Math.max(B,t3),1e9);
+          if(h1) lines.push({label:`Переработка с ${B+1}-го часа`,qty:hrs(h1),rate:r.ot1,sum:h1*r.ot1,shift:true});
+          if(h2) lines.push({label:`Переработка с ${r.ot2From}-го часа`,qty:hrs(h2),rate:r.ot2,sum:h2*r.ot2,shift:true});
+          if(h3) lines.push({label:`Переработка с ${r.ot3From}-го часа`,qty:hrs(h3),rate:r.ot3,sum:h3*r.ot3,shift:true});
+        } else lines.push({label:'Переработка',qty:hrs(otH),rate:r.ot1,sum:otH*r.ot1,shift:true});
+      }
+      }
+    }
+    if(!fixed){
+    if($('lateLunch').checked){const h=num($('lateLunchH').value); if(h) lines.push({label:'Поздний обед',qty:hrs(h),rate:r.ot1,sum:h*r.ot1,shift:true});}
+    if($('curLunch').checked){const h=num($('curLunchH').value); if(h) lines.push({label:'Текущий обед',qty:hrs(h),rate:r.ot1,sum:h*r.ot1,shift:true});}
+    }
+  } else if(t==='transfer'){
+    if(fixed) fixedLine(); else lines.push({label:'День трансфера, 100% смены',qty:'1',rate:r.base,sum:r.base,shift:true});
+  } else if(t==='idle'){
+    lines.push({label:'Простой в командировке, 50% смены',qty:'1',rate:r.base*.5,sum:r.base*.5});
+  } else {
+    const nRaw=$('notice').value, n=num(nRaw), arrived=$('arrived').checked;
+    let pct=null, why='';
+    if(t==='cancelWeather'){
+      if(nRaw==='') warn.push('Укажите, за сколько часов до вызова сообщили об отмене.');
+      else if(n>=6){pct=0;why='уведомление за 6 ч и более'}
+      else if(n>=2){pct=50;why='уведомление за 2–6 ч'}
+      else {pct=100;why='уведомление менее чем за 2 ч'}
+    } else {
+      if(arrived){pct=100;why='группа прибыла на площадку'}
+      else if(nRaw==='') warn.push('Укажите, за сколько часов до вызова сообщили об отмене.');
+      else if(n>20){pct=0;why='уведомление более чем за 20 ч'}
+      else if(n<6){pct=100;why='уведомление менее чем за 6 ч'}
+      else {pct=num($('midPct').value);why='уведомление за 6–20 ч, по договорённости'}
+    }
+    $('cancelHint').textContent = pct===null?'':`Компенсация ${pct}%: ${why}.`;
+    if(pct!==null){
+      meta.push(['Уведомление',arrived&&t==='cancelOther'?'по прибытии':hrs(n)+' до вызова']);
+      lines.push({label:`Компенсация за отмену, ${pct}% (${why})`,qty:'1',rate:r.base*pct/100,sum:r.base*pct/100});
+    }
+  }
+
+  const double=$('day7').checked||$('holiday').checked;
+  if(double && !fixed && (timed||t==='transfer')){
+    const why=[$('day7').checked?'7-й день недели':'',$('holiday').checked?'праздничный день':''].filter(Boolean).join(', ');
+    const sub=lines.filter(l=>l.shift).reduce((a,l)=>a+l.sum,0);
+    if(sub) lines.push({label:`Двойной тариф: ${why}`,qty:'×2',rate:null,sum:sub});
+  }
+
+  if(timed && !fixed && $('gap').checked){
+    const norm=num($('gapNorm').value), factRaw=$('gapFact').value, fact=num(factRaw);
+    if(factRaw===''){ $('gapHint').textContent='Введите фактический отдых между сменами.'; }
+    else{
+      const g=roundHalf(Math.max(0,Math.round((norm-fact)*60)));
+      $('gapHint').textContent = g?`Разрыв ${hrs(g)} × ${rub(r.gap)}.`:'Отдых не меньше положенного, разрыва нет.';
+      if(fact<5) warn.push('По условиям перерыв между сменами не может быть меньше 5 часов.');
+      if(g) lines.push({label:`Разрыв: отдых ${hrs(fact)} вместо ${hrs(norm)}`,qty:hrs(g),rate:r.gap,sum:g*r.gap});
+    }
+  }
+
+  EXTRAS.forEach(x=>{if($('ex_'+x.id).checked){const a=num($('exa_'+x.id).value); if(a) lines.push({label:x.label,qty:'1',rate:a,sum:a});}});
+  if($('taxi').checked){
+    const rs=receipts.filter(x=>num(x.amount)||String(x.url||'').trim());
+    const sum=rs.reduce((a,x)=>a+num(x.amount),0);
+    if(rs.length) lines.push({label:`Такси, по чекам (${rs.length})`,qty:'1',rate:sum,sum,taxi:clone(rs)});
+  }
+  customs.forEach(c=>{const a=num(c.amount); if(a||String(c.label||'').trim()) lines.push({label:String(c.label||'').trim()||'Доплата',qty:'1',rate:a,sum:a});});
+
+  return {lines,total:lines.reduce((a,l)=>a+l.sum,0),warn,meta,timeStr,dayType:t,date:$('date').value};
+}
+
+/* ---------- rendering ---------- */
+const TOGGLES=['prog','fixed','lateLunch','curLunch','gap','taxi'];
+let last=null;
+function update(){
+  const t=$('dayType').value, timed=t==='shoot'||t==='test', cancel=t.startsWith('cancel');
+  TOGGLES.forEach(id=>$(id+'_box').hidden=!$(id).checked);
+  EXTRAS.forEach(x=>$('ex_'+x.id+'_box').hidden=!$('ex_'+x.id).checked);
+  $('timedBlock').hidden=!timed; $('timedOpts').hidden=!timed;
+  $('fixedWrap').hidden=!(timed||t==='transfer');
+  $('condCard').hidden=!(timed||t==='transfer')||$('fixed').checked;
+  $('cancelBlock').hidden=!cancel;
+  $('arrivedWrap').hidden=t!=='cancelOther'; $('midPctWrap').hidden=t!=='cancelOther';
+  const r=compute(); last=r;
+  $('meta').innerHTML=r.meta.map(([k,v])=>`<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('');
+  $('lines').innerHTML=r.lines.map(l=>`<tr><td>${esc(l.label)}${l.qty!=='1'?`<span class="q">${esc(l.qty)}${l.rate!=null?' × '+rub(l.rate):''}</span>`:''}</td><td class="s">${rub(l.sum)}</td></tr>`).join('')||'<tr><td class="hint">Нет начислений</td><td></td></tr>';
+  $('warnings').innerHTML=r.warn.map(w=>`<p class="warn">${esc(w)}</p>`).join('');
+  $('total').textContent=rub(r.total); $('barTotal').textContent=rub(r.total);
+  saveDraft();
+}
+function renderMode(){
+  const inProj=!!cur;
+  $('shiftsCard').hidden=!inProj; $('saveShift').hidden=!inProj; $('projActs').hidden=!inProj;
+  $('projectLbl').textContent=inProj?'Название проекта (сохраняется)':'Название проекта';
+  $('saveShift').textContent=editingId?'Обновить смену':'Сохранить в проект';
+  $('shiftTitle').textContent=inProj?(editingId?'Смена (редактирование)':'Новая смена'):'Смена';
+  $('barBtn').textContent=inProj?$('saveShift').textContent:'PDF смены';
+  renderProjSel(); renderShifts();
+}
+function renderProjSel(){
+  const sel=$('projSel');
+  sel.innerHTML='<option value="">Разовая смена</option>'+projects.map(p=>`<option value="${esc(p.id)}">${esc(p.name||'Без названия')}</option>`).join('');
+  sel.value=cur?cur.id:'';
+}
+const sortShifts = arr => arr.slice().sort((a,b)=>(a.date||'').localeCompare(b.date||'')||(a.start||'').localeCompare(b.start||''));
+function renderShifts(){
+  if(!cur) return;
+  const list=sortShifts(cur.shifts||[]);
+  const box=$('shifts');
+  box.innerHTML = list.length? '' : '<p class="hint">Смен пока нет. Заполните смену ниже и нажмите «Сохранить в проект».</p>';
+  list.forEach(s=>{
+    const row=document.createElement('div'); row.className='sh'+(s.id===editingId?' on':'');
+    row.innerHTML=`<input type="checkbox" aria-label="Включить в общий PDF"><div class="d"><b>${fmtDate(s.date)}</b><span>${esc(DAY_NAMES[s.dayType]||'')}${s.timeStr?' · '+esc(s.timeStr):''}</span></div><span class="s">${rub(s.total)}</span><div class="acts"><button type="button">Открыть</button><button type="button" class="x" aria-label="Удалить смену">✕</button></div>`;
+    const [cb]=row.getElementsByTagName('input'); const [openB,delB]=row.getElementsByTagName('button');
+    cb.checked=selected.has(s.id);
+    cb.addEventListener('change',()=>{cb.checked?selected.add(s.id):selected.delete(s.id);renderSelTotal()});
+    openB.addEventListener('click',()=>openShift(s.id));
+    delB.addEventListener('click',()=>{
+      if(delB.dataset.armed){deleteShift(s.id);return}
+      delB.dataset.armed='1'; delB.textContent='Удалить?'; delB.style.width='auto'; delB.classList.add('danger');
+      setTimeout(()=>{if(delB.isConnected){delete delB.dataset.armed;delB.textContent='✕';delB.style.width='';delB.classList.remove('danger')}},3500);
+    });
+    box.appendChild(row);
+  });
+  renderSelTotal();
+}
+function renderSelTotal(){
+  const list=(cur&&cur.shifts||[]).filter(s=>selected.has(s.id));
+  $('selCount').textContent=`Выбрано смен: ${list.length} из ${(cur&&cur.shifts||[]).length}`;
+  $('selTotal').textContent=rub(list.reduce((a,s)=>a+s.total,0));
+  $('sumPdf').disabled=!list.length;
+}
+
+/* ---------- drafts (per browser) ---------- */
+function saveDraft(){
+  if(cur) local.set('pdraft_'+cur.id,{editingId,shift:readShift()});
+  else local.set('draft',Object.assign(readShift(),readIds(PROJECT_IDS)));
+  local.set('profile',readIds(PROFILE_IDS));
+}
+function loadOneOff(){
+  const d=local.get('draft',null)||{};
+  const defs=Object.assign(shiftDefaults(),{role:'1st AC',project:'',producer:'',prog:false});
+  RATE_KEYS.forEach(k=>defs['r_'+k]=DEFAULT_RATES[k]);
+  const all=Object.assign(defs,d);
+  writeIds(PROJECT_IDS,all); writeShift(all);
+}
+
+/* ---------- storage backends ---------- */
+function makeLocalBackend(){
+  return {
+    cloud:false,
+    async loadProjects(){return local.get('projects',[])},
+    saveProject(){local.set('projects',projects)},
+    async deleteProject(){local.set('projects',projects)},
+    async loadProfile(){return null}, saveProfile(){}
+  };
+}
+function makeDbBackend(db, userId){
+  const col=db.collection('data/users/'+userId);
+  const writers={};
+  function queue(id, getData){
+    const w=writers[id]||(writers[id]={busy:false,dirty:false});
+    w.get=getData; if(w.busy){w.dirty=true;return}
+    (async()=>{
+      w.busy=true;
+      do{ w.dirty=false;
+        try{ await col.doc(id).set(clone(w.get())); $('saveState').textContent='Сохранено в облаке claude.ai — доступно на всех ваших устройствах.'; }
+        catch(e){ $('saveState').textContent='Не удалось сохранить: '+(e&&e.code==='quota_exceeded'?'хранилище заполнено, удалите старые проекты.':(e&&e.message||'ошибка')); }
+      } while(w.dirty);
+      w.busy=false;
+    })();
+  }
+  return {
+    cloud:true,
+    async loadProjects(){const snap=await col.where('kind','==','project').get();return snap.docs.map(d=>clone(d.data()))},
+    saveProject(p){const id=p.id;queue(id,()=>projects.find(x=>x.id===id)||p)},
+    async deleteProject(id){await col.doc(id).delete()},
+    async loadProfile(){const s=await col.doc('profile').get();return s.exists?s.data():null},
+    saveProfile(p){queue('profile',()=>p())}
+  };
+}
+
+/* ---------- projects ---------- */
+let projTimer=null;
+function onProjectField(){
+  if(!cur) return;
+  Object.assign(cur,projectFieldsFromDom());
+  clearTimeout(projTimer); projTimer=setTimeout(()=>{backend.saveProject(cur);renderProjSel()},500);
+}
+function selectProject(id){
+  saveDraft();
+  cur = projects.find(p=>p.id===id)||null;
+  local.set('lastProject',cur?cur.id:'');
+  editingId=null; selected=new Set(cur?cur.shifts.map(s=>s.id):[]);
+  if(cur){
+    projectToDom(cur);
+    const d=local.get('pdraft_'+cur.id,null);
+    const lastShift=sortShifts(cur.shifts).slice(-1)[0];
+    if(d&&(!d.editingId||cur.shifts.some(s=>s.id===d.editingId))){editingId=d.editingId||null;writeShift(Object.assign(shiftDefaults(lastShift),d.shift))}
+    else writeShift(shiftDefaults(lastShift));
+  } else loadOneOff();
+  renderMode(); update();
+}
+function newProject(){
+  const p=Object.assign({id:'p_'+uid(),kind:'project',createdAt:new Date().toISOString(),shifts:[]},projectFieldsFromDom());
+  if(!p.name) p.name='Новый проект';
+  projects.push(p); backend.saveProject(p);
+  selectProject(p.id);
+  $('project').focus(); $('project').select();
+  status('Проект создан. Должность, ставки и продакшн теперь сохраняются в нём.');
+}
+let delArmed=false;
+async function deleteProject(){
+  if(!cur) return;
+  if(!delArmed){delArmed=true;$('delProj').textContent=`Точно удалить «${cur.name||'проект'}» и все его смены?`;setTimeout(()=>{delArmed=false;$('delProj').textContent='Удалить проект'},4000);return}
+  delArmed=false; $('delProj').textContent='Удалить проект';
+  const id=cur.id; projects=projects.filter(p=>p.id!==id);
+  try{await backend.deleteProject(id);local.del('pdraft_'+id);status('Проект удалён.')}catch(e){status('Не удалось удалить проект: '+(e&&e.message||'ошибка'))}
+  selectProject('');
+}
+function saveShift(){
+  if(!cur) return;
+  const r=last;
+  if(r.warn.length){status('Сначала исправьте: '+r.warn[0]);return}
+  const s=Object.assign(readShift(),{id:editingId||'s_'+uid(),total:r.total,timeStr:r.timeStr,lines:r.lines.map(({label,qty,rate,sum,taxi})=>({label,qty,rate,sum,...(taxi?{taxi}:{})})),savedAt:new Date().toISOString()});
+  const i=cur.shifts.findIndex(x=>x.id===s.id);
+  if(i>=0) cur.shifts[i]=s; else {cur.shifts.push(s);selected.add(s.id)}
+  editingId=s.id;
+  Object.assign(cur,projectFieldsFromDom());
+  backend.saveProject(cur);
+  status(`Смена ${fmtDate(s.date)} ${i>=0?'обновлена':'сохранена'}: ${rub(s.total)}.`);
+  renderMode(); saveDraft();
+}
+function openShift(id){
+  const s=cur.shifts.find(x=>x.id===id); if(!s) return;
+  editingId=id; writeShift(Object.assign(shiftDefaults(),s)); renderMode(); update();
+  status(`Открыта смена ${fmtDate(s.date)}.`);
+  $('shiftTitle').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function newShift(){
+  editingId=null; writeShift(shiftDefaults(sortShifts(cur.shifts).slice(-1)[0])); renderMode(); update();
+  status('Новая смена: доплаты сброшены, ставки проекта на месте.');
+}
+function deleteShift(id){
+  cur.shifts=cur.shifts.filter(s=>s.id!==id); selected.delete(id);
+  if(editingId===id) editingId=null;
+  backend.saveProject(cur); renderMode(); update(); status('Смена удалена.');
+}
+
+/* ---------- PDF ---------- */
+const PDF_NOTE={text:'Расчёт по условиям работы механиков камеры от 01.04.2024. Переработка округляется: 1–30 мин — 0,5 ч, 31–60 мин — 1 ч.',fontSize:8,color:'#6a727b',margin:[0,20,0,0]};
+const tableLayout={hLineWidth:(i,n)=>i===0?0:(i===1||i===n.table.body.length-1?1:.5),vLineWidth:()=>0,hLineColor:i=>i===1?'#16191d':'#d9dde1',paddingTop:()=>6,paddingBottom:()=>6};
+const metaTable=rows=>({table:{widths:[110,'*'],body:rows.map(([k,v])=>[{text:k,color:'#6a727b'},{text:String(v)}])},layout:'noBorders',margin:[0,0,0,18]});
+function shiftDoc(){
+  const r=last, name=$('name').value.trim(), contact=$('contact').value.trim(), note=$('note').value.trim();
+  const body=[[{text:'Статья',style:'th'},{text:'Кол-во',style:'th',alignment:'center'},{text:'Ставка',style:'th',alignment:'right'},{text:'Сумма',style:'th',alignment:'right'}]];
+  r.lines.forEach(l=>{
+    const label = l.taxi ? {stack:[l.label,...l.taxi.map((x,i)=>{const u=String(x.url||'').trim();return {text:[`Чек ${i+1}: ${rub(num(x.amount))}`,u?' — ':'',u?{text:u,link:u,color:'#1f5fae',decoration:'underline'}:''],fontSize:8,color:'#555',margin:[0,2,0,0]}})]} : l.label;
+    body.push([label,{text:l.qty,alignment:'center'},{text:l.rate!=null&&l.qty!=='1'?rub(l.rate):'',alignment:'right'},{text:rub(l.sum),alignment:'right'}]);
+  });
+  body.push([{text:'Итого к оплате',bold:true,colSpan:3},{},{},{text:rub(r.total),bold:true,fontSize:12,alignment:'right'}]);
+  const rows=[]; if(name) rows.push(['Исполнитель',name]); r.meta.forEach(m=>rows.push(m)); if(contact) rows.push(['Контакт',contact]);
+  return {
+    pageSize:'A4',pageMargins:[48,48,48,56],defaultStyle:{font:'Roboto',fontSize:10,lineHeight:1.2},
+    content:[
+      {text:'Расчёт оплаты смены',fontSize:18,bold:true,margin:[0,0,0,16]},
+      metaTable(rows),
+      {table:{headerRows:1,widths:['*',55,75,80],body},layout:tableLayout},
+      note?{text:[{text:'Комментарий: ',bold:true},note],margin:[0,16,0,0]}:'',
+      PDF_NOTE
+    ],
+    styles:{th:{bold:true,fontSize:9,color:'#6a727b'}},
+    info:{title:'Расчёт смены '+fmtDate($('date').value)}
+  };
+}
+function summaryDoc(list){
+  const name=$('name').value.trim(), contact=$('contact').value.trim(), total=list.reduce((a,s)=>a+s.total,0);
+  const rows=[]; if(name) rows.push(['Исполнитель',name]);
+  if(cur.role) rows.push(['Должность',cur.role]);
+  rows.push(['Проект',cur.name||'—']);
+  if(cur.producer) rows.push(['Продакшн',cur.producer]);
+  rows.push(['Период',list.length>1?`${fmtDate(list[0].date)} – ${fmtDate(list[list.length-1].date)}`:fmtDate(list[0].date)]);
+  rows.push(['Смен',String(list.length)]);
+  if(contact) rows.push(['Контакт',contact]);
+  const body=[[{text:'№',style:'th'},{text:'Дата',style:'th'},{text:'Смена',style:'th'},{text:'Сумма',style:'th',alignment:'right'}]];
+  list.forEach((s,i)=>body.push([String(i+1),fmtDate(s.date),(DAY_NAMES[s.dayType]||'')+(s.timeStr?', '+s.timeStr:''),{text:rub(s.total),alignment:'right'}]));
+  body.push([{text:'Итого к оплате',bold:true,colSpan:3},{},{},{text:rub(total),bold:true,fontSize:12,alignment:'right'}]);
+  return {
+    pageSize:'A4',pageMargins:[48,48,48,56],defaultStyle:{font:'Roboto',fontSize:10,lineHeight:1.2},
+    content:[
+      {text:'Сводный расчёт по проекту',fontSize:18,bold:true,margin:[0,0,0,16]},
+      metaTable(rows),
+      {table:{headerRows:1,widths:[22,70,'*',90],body},layout:tableLayout},
+      PDF_NOTE
+    ],
+    styles:{th:{bold:true,fontSize:9,color:'#6a727b'}},
+    info:{title:'Сводный расчёт '+(cur.name||'')}
+  };
+}
+const safe = s => String(s||'').replace(/[\\/:*?"<>|]+/g,'').trim().slice(0,40);
+let dl=null;
+let pendingFile=null;
+async function shareFile(file, done){
+  try{ await navigator.share({files:[file]}); status(done); $('shareBtn').hidden=true; pendingFile=null; }
+  catch(e){
+    if(e&&e.name==='AbortError'){status('Отправка отменена.');return}
+    // iPhone forgets the tap while the PDF is being built: ask for one more tap
+    pendingFile=file; $('shareBtn').hidden=false; status('Файл готов. Нажмите «Отправить / сохранить файл».');
+  }
+}
+async function saveFile(filename, blob, done){
+  if(OFFLINE){
+    const file=new File([blob],filename,{type:blob.type||'application/octet-stream'});
+    if(matchMedia('(pointer:coarse)').matches && navigator.canShare && navigator.canShare({files:[file]})){ await shareFile(file,done); return; }
+    const url=URL.createObjectURL(blob), a=document.createElement('a');
+    // Chrome drops non-Latin download names on local files, so transliterate
+    const TR={а:'a',б:'b',в:'v',г:'g',д:'d',е:'e',ё:'e',ж:'zh',з:'z',и:'i',й:'y',к:'k',л:'l',м:'m',н:'n',о:'o',п:'p',р:'r',с:'s',т:'t',у:'u',ф:'f',х:'h',ц:'ts',ч:'ch',ш:'sh',щ:'sch',ъ:'',ы:'y',ь:'',э:'e',ю:'yu',я:'ya'};
+    const latin=filename.replace(/[а-яё]/gi,c=>{const t=TR[c.toLowerCase()];return c===c.toLowerCase()?t:t.charAt(0).toUpperCase()+t.slice(1)}).replace(/[^\w.\-]+/g,'_').replace(/_+/g,'_');
+    a.href=url; a.download=latin; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),60000); status(done); return;
+  }
+  if(!dl){status('Скачивание файлов недоступно в этом окне.');return}
+  try{await dl.save({filename,data:blob});status(done)}
+  catch(e){status(e&&e.code==='declined'?'Скачивание отменено.':'Не удалось сохранить файл: '+((e&&e.message)||'ошибка'))}
+}
+function savePdf(doc, filename){
+  if(!window.pdfMake){status('Не загрузилась библиотека PDF. Обновите страницу.');return}
+  status('Готовлю PDF…');
+  pdfMake.createPdf(doc).getBlob(blob=>saveFile(filename,blob,'PDF сохранён.'));
+}
+function exportProjects(){
+  const data={app:'ac-shift',version:1,exportedAt:new Date().toISOString(),profile:readIds(PROFILE_IDS),projects};
+  saveFile(`Проекты смен ${fmtDate(todayIso())}.json`,new Blob([JSON.stringify(data,null,1)],{type:'application/json'}),`Экспортировано проектов: ${projects.length}.`);
+}
+async function importProjects(file){
+  try{
+    const data=JSON.parse(await file.text());
+    if(!data||data.app!=='ac-shift'||!Array.isArray(data.projects)) throw new Error('это не файл экспорта проектов');
+    let added=0, replaced=0;
+    data.projects.forEach(p=>{
+      if(!p||!p.id||!Array.isArray(p.shifts)) return;
+      p.kind='project';
+      const i=projects.findIndex(x=>x.id===p.id);
+      if(i>=0){projects[i]=p;replaced++} else {projects.push(p);added++}
+      backend.saveProject(p);
+    });
+    if(data.profile&&!$('name').value.trim()){writeIds(PROFILE_IDS,data.profile);backend.saveProfile(()=>readIds(PROFILE_IDS));saveDraft()}
+    if(cur) cur=projects.find(p=>p.id===cur.id)||null;
+    selectProject(cur?cur.id:'');
+    status(`Импорт: новых проектов ${added}, обновлено ${replaced}.`);
+  }catch(e){status('Не удалось импортировать: '+(e&&e.message||'ошибка'))}
+}
+function shiftPdf(){const p=safe($('project').value);savePdf(shiftDoc(),`Расчёт смены ${fmtDate($('date').value)}${p?' '+p:''}.pdf`)}
+function summaryPdf(){
+  const list=sortShifts(cur.shifts).filter(s=>selected.has(s.id)); if(!list.length) return;
+  const period=list.length>1?`${fmtDate(list[0].date)}–${fmtDate(list[list.length-1].date)}`:fmtDate(list[0].date);
+  savePdf(summaryDoc(list),`Сводный расчёт ${safe(cur.name)||'проект'} ${period}.pdf`);
+}
+function copyText(){
+  const r=last, out=[];
+  if($('name').value.trim()) out.push('Исполнитель: '+$('name').value.trim());
+  r.meta.forEach(([k,v])=>out.push(k+': '+v)); out.push('');
+  r.lines.forEach(l=>{
+    out.push(`${l.label}${l.qty!=='1'?' — '+l.qty+(l.rate!=null?' × '+rub(l.rate):''):''}: ${rub(l.sum)}`);
+    if(l.taxi) l.taxi.forEach((x,i)=>out.push(`  чек ${i+1}: ${rub(num(x.amount))}${String(x.url||'').trim()?' '+String(x.url).trim():''}`));
+  });
+  out.push('','ИТОГО: '+rub(r.total));
+  navigator.clipboard.writeText(out.join('\n')).then(()=>status('Текст скопирован.'),()=>status('Не удалось скопировать автоматически.'));
+}
+
+/* ---------- boot ---------- */
+buildExtras(); loadOneOff(); writeIds(PROFILE_IDS,local.get('profile',{})); renderMode(); update();
+document.querySelectorAll('.col input:not([id^="receipts_"]):not([id^="customs_"]), .col select:not(#projSel), .col textarea').forEach(el=>{el.addEventListener('input',update);el.addEventListener('change',update)});
+PROJECT_IDS.forEach(id=>{$(id).addEventListener('input',onProjectField);$(id).addEventListener('change',onProjectField)});
+let profTimer=null;
+PROFILE_IDS.forEach(id=>$(id).addEventListener('input',()=>{clearTimeout(profTimer);profTimer=setTimeout(()=>backend&&backend.saveProfile(()=>readIds(PROFILE_IDS)),800)}));
+$('projSel').addEventListener('change',e=>selectProject(e.target.value));
+$('newProj').addEventListener('click',newProject);
+$('delProj').addEventListener('click',deleteProject);
+$('saveShift').addEventListener('click',saveShift);
+$('newShift').addEventListener('click',newShift);
+$('sumPdf').addEventListener('click',summaryPdf);
+$('selAll').addEventListener('click',()=>{const all=cur.shifts.every(s=>selected.has(s.id));selected=new Set(all?[]:cur.shifts.map(s=>s.id));renderShifts()});
+$('resetRates').addEventListener('click',()=>{RATE_KEYS.forEach(k=>$('r_'+k).value=DEFAULT_RATES[k]);onProjectField();update();status('Ставки возвращены к условиям от 01.04.2024.')});
+$('addReceipt').addEventListener('click',()=>{receipts.push({amount:'',url:''});buildReceipts();update();$('receipts_amount_'+(receipts.length-1)).focus()});
+$('addCustom').addEventListener('click',()=>{customs.push({label:'',amount:''});buildCustoms();update();$('customs_label_'+(customs.length-1)).focus()});
+['fixed','lateLunch','curLunch','gap','taxi','prog'].forEach(id=>$(id).addEventListener('change',e=>{if(e.target.checked){const f=$(id+'_box').querySelector('input');f&&f.focus()}}));
+$('pdfBtn').addEventListener('click',shiftPdf);
+$('exportBtn').addEventListener('click',exportProjects);
+$('importBtn').addEventListener('click',()=>$('importFile').click());
+$('importFile').addEventListener('change',e=>{const f=e.target.files[0];e.target.value='';if(f)importProjects(f)});
+$('barBtn').addEventListener('click',()=>cur?saveShift():shiftPdf());
+$('copyBtn').addEventListener('click',copyText);
+$('shareBtn').addEventListener('click',()=>{if(pendingFile)shareFile(pendingFile,'Готово.')});
+
+async function initStorage(){
+  let db=null, userId=null;
+  if(!OFFLINE&&window.claude&&window.claude.use){
+    try{
+      const [d,u,dls]=await Promise.all([claude.use('db'),claude.use('user'),claude.use('downloads')]);
+      dl=dls; if(!dls){$('pdfBtn').disabled=true;$('sumPdf').disabled=true}
+      db=d; userId=u?await u.id():null;
+    }catch(e){}
+  }
+  backend = db&&userId ? makeDbBackend(db,userId) : makeLocalBackend();
+  try{ projects = await backend.loadProjects(); }
+  catch(e){ backend=makeLocalBackend(); projects=await backend.loadProjects(); }
+  projects.forEach(p=>{p.shifts=p.shifts||[]});
+  projects.sort((a,b)=>(a.createdAt||'').localeCompare(b.createdAt||''));
+  if(backend.cloud){
+    try{const prof=await backend.loadProfile(); if(prof) writeIds(PROFILE_IDS,prof);}catch(e){}
+    $('saveState').textContent='Проекты хранятся в облаке claude.ai и доступны на всех ваших устройствах.';
+  } else $('saveState').textContent=OFFLINE?'Проекты хранятся на этом устройстве. На iPhone открывайте калькулятор с иконки на экране «Домой» и время от времени делайте «Экспорт проектов».':'Облако недоступно: проекты сохраняются только в этом браузере.';
+  const lastId=local.get('lastProject','');
+  if(lastId&&projects.some(p=>p.id===lastId)) selectProject(lastId); else renderMode();
+}
+(function hook(tries){
+  if(OFFLINE||(window.claude&&window.claude.use)){initStorage();return}
+  if(tries>0) setTimeout(()=>hook(tries-1),300); else initStorage();
+})(15);
+</script>
+
+<script>if("serviceWorker" in navigator&&location.protocol==="https:")navigator.serviceWorker.register("sw.js").catch(()=>{});</script>
+</body></html>
