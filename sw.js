@@ -1,5 +1,5 @@
 // Keeps the calculator working without internet. Bump VERSION on every release.
-const VERSION = 'smena-v1';
+const VERSION = 'smena-v2';
 const FILES = ['./', 'index.html', 'pdfmake.min.js', 'vfs_fonts.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));

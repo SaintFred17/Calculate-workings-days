@@ -64,6 +64,8 @@ table.br td.s{text-align:right;white-space:nowrap;padding-left:10px}
 table.br .q{display:block;color:var(--muted);font-size:12px}
 .total{display:flex;justify-content:space-between;align-items:baseline;gap:10px;border-top:1px solid var(--ink);padding-top:12px}
 .total .v{font-weight:600;font-size:24px}
+.taxrows{display:flex;flex-direction:column;gap:10px}
+.taxline{display:flex;justify-content:space-between;gap:10px;font-size:14px;color:var(--muted)}
 .actions{display:flex;flex-wrap:wrap;gap:8px}
 .actions button{flex:1 1 130px}
 .status{font-size:13px;color:var(--muted);min-height:1.2em;margin:0}
@@ -128,6 +130,7 @@ table.br .q{display:block;color:var(--muted);font-size:12px}
         <div class="head"><h2>Смены проекта</h2><button class="link" id="selAll" type="button">Выбрать все</button></div>
         <div class="shifts" id="shifts"></div>
         <div class="ptotal"><span id="selCount">Выбрано: 0</span><span id="selTotal">0 ₽</span></div>
+        <p class="hint" id="selTax" hidden></p>
         <div class="btns">
           <button class="primary" id="sumPdf" type="button">Общий PDF за выбранные смены</button>
           <button id="newShift" type="button">+ Новая смена</button>
@@ -239,6 +242,17 @@ table.br .q{display:block;color:var(--muted);font-size:12px}
         </div>
         <label class="f"><span>Комментарий к смене</span><textarea id="note" rows="3" placeholder="Например: реквизиты, детали смены"></textarea></label>
       </section>
+
+      <section class="card">
+        <h2>Налог</h2>
+        <div class="opt">
+          <label class="check"><input id="taxOn" type="checkbox"> Налог ИП</label>
+          <div class="more" id="taxOn_box" hidden>
+            <label class="f"><span>Ставка налога, %</span><input id="taxPct" type="number" min="0" max="100" step="0.5" inputmode="decimal" placeholder="Например: 6"></label>
+            <p class="hint">В отчёте сначала идёт сумма за смену, затем налог и сумма с налогом. Настройка запоминается.</p>
+          </div>
+        </div>
+      </section>
     </div>
 
     <aside class="sum" aria-live="polite">
@@ -246,6 +260,10 @@ table.br .q{display:block;color:var(--muted);font-size:12px}
       <table class="br"><tbody id="lines"></tbody></table>
       <div id="warnings"></div>
       <div class="total"><span>Итого за смену</span><span class="v" id="total">0 ₽</span></div>
+      <div class="taxrows" id="taxRows" hidden>
+        <div class="taxline"><span id="taxLbl">Налог ИП</span><span id="taxSum">0 ₽</span></div>
+        <div class="total"><span>Итого с налогом</span><span class="v" id="totalTax">0 ₽</span></div>
+      </div>
       <div class="actions">
         <button class="primary" id="saveShift" type="button" hidden>Сохранить в проект</button>
         <button id="pdfBtn" type="button">PDF смены</button>
@@ -274,7 +292,7 @@ const EXTRAS = [
 const DAY_NAMES = {shoot:'Съёмочная смена',test:'Тесты камеры / осмотр объекта',transfer:'Трансфер (командировка)',idle:'Простой в командировке',cancelWeather:'Отмена смены (weather day)',cancelOther:'Отмена смены'};
 const PROJECT_IDS = ['role',...RATE_KEYS.map(k=>'r_'+k),'prog','project','producer'];
 const SHIFT_IDS = ['dayType','date','start','end','mode','plusDay','notice','midPct','arrived','lateLunch','lateLunchH','curLunch','curLunchH','gap','gapNorm','gapFact','day7','holiday','taxi','note','fixed','fixedAmt',...EXTRAS.flatMap(x=>['ex_'+x.id,'exa_'+x.id])];
-const PROFILE_IDS = ['name','contact'];
+const PROFILE_IDS = ['name','contact','taxOn','taxPct'];
 
 const $ = id => document.getElementById(id);
 const local = {
@@ -302,6 +320,9 @@ const esc = s => String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&g
 const uid = () => Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const clone = o => JSON.parse(JSON.stringify(o));
 const status = t => $('status').textContent = t;
+const taxPct = () => $('taxOn').checked ? num($('taxPct').value) : 0;
+const taxOf = total => Math.round(total*taxPct())/100;
+const pctStr = p => String(p).replace('.',',')+'%';
 
 /* ---------- form builders ---------- */
 function buildExtras(){
@@ -453,7 +474,7 @@ function compute(){
 }
 
 /* ---------- rendering ---------- */
-const TOGGLES=['prog','fixed','lateLunch','curLunch','gap','taxi'];
+const TOGGLES=['prog','taxOn','fixed','lateLunch','curLunch','gap','taxi'];
 let last=null;
 function update(){
   const t=$('dayType').value, timed=t==='shoot'||t==='test', cancel=t.startsWith('cancel');
@@ -468,7 +489,11 @@ function update(){
   $('meta').innerHTML=r.meta.map(([k,v])=>`<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('');
   $('lines').innerHTML=r.lines.map(l=>`<tr><td>${esc(l.label)}${l.qty!=='1'?`<span class="q">${esc(l.qty)}${l.rate!=null?' × '+rub(l.rate):''}</span>`:''}</td><td class="s">${rub(l.sum)}</td></tr>`).join('')||'<tr><td class="hint">Нет начислений</td><td></td></tr>';
   $('warnings').innerHTML=r.warn.map(w=>`<p class="warn">${esc(w)}</p>`).join('');
-  $('total').textContent=rub(r.total); $('barTotal').textContent=rub(r.total);
+  const tp=taxPct(), tx=taxOf(r.total);
+  $('total').textContent=rub(r.total);
+  $('taxRows').hidden=!tp; $('taxLbl').textContent=`Налог ИП ${pctStr(tp)}`; $('taxSum').textContent='+ '+rub(tx); $('totalTax').textContent=rub(r.total+tx);
+  $('barTotal').textContent=rub(r.total+tx);
+  if(cur) renderSelTotal();
   saveDraft();
 }
 function renderMode(){
@@ -510,7 +535,9 @@ function renderShifts(){
 function renderSelTotal(){
   const list=(cur&&cur.shifts||[]).filter(s=>selected.has(s.id));
   $('selCount').textContent=`Выбрано смен: ${list.length} из ${(cur&&cur.shifts||[]).length}`;
-  $('selTotal').textContent=rub(list.reduce((a,s)=>a+s.total,0));
+  const sum=list.reduce((a,s)=>a+s.total,0), tp=taxPct();
+  $('selTotal').textContent=rub(sum);
+  $('selTax').hidden=!tp||!list.length; $('selTax').textContent=`С налогом ИП ${pctStr(tp)}: ${rub(sum+taxOf(sum))}`;
   $('sumPdf').disabled=!list.length;
 }
 
@@ -632,7 +659,14 @@ function deleteShift(id){
 
 /* ---------- PDF ---------- */
 const PDF_NOTE={text:'Расчёт по условиям работы механиков камеры от 01.04.2024. Переработка округляется: 1–30 мин — 0,5 ч, 31–60 мин — 1 ч.',fontSize:8,color:'#6a727b',margin:[0,20,0,0]};
-const tableLayout={hLineWidth:(i,n)=>i===0?0:(i===1||i===n.table.body.length-1?1:.5),vLineWidth:()=>0,hLineColor:i=>i===1?'#16191d':'#d9dde1',paddingTop:()=>6,paddingBottom:()=>6};
+const tableLayout=(k=1)=>({hLineWidth:(i,n)=>i===0?0:(i===1||i===n.table.body.length-k?1:.5),vLineWidth:()=>0,hLineColor:i=>i===1?'#16191d':'#d9dde1',paddingTop:()=>6,paddingBottom:()=>6});
+function totalRows(total){
+  const tp=taxPct(), rows=[[{text:tp?'Итого за смены':'Итого к оплате',bold:true,colSpan:3},{},{},{text:rub(total),bold:true,fontSize:tp?10:12,alignment:'right'}]];
+  if(tp){const tx=taxOf(total);
+    rows.push([{text:`Налог ИП ${pctStr(tp)}`,colSpan:3,color:'#6a727b'},{},{},{text:'+ '+rub(tx),alignment:'right',color:'#6a727b'}]);
+    rows.push([{text:'Итого к оплате с налогом',bold:true,colSpan:3},{},{},{text:rub(total+tx),bold:true,fontSize:12,alignment:'right'}]);}
+  return rows;
+}
 const metaTable=rows=>({table:{widths:[110,'*'],body:rows.map(([k,v])=>[{text:k,color:'#6a727b'},{text:String(v)}])},layout:'noBorders',margin:[0,0,0,18]});
 function shiftDoc(){
   const r=last, name=$('name').value.trim(), contact=$('contact').value.trim(), note=$('note').value.trim();
@@ -641,14 +675,14 @@ function shiftDoc(){
     const label = l.taxi ? {stack:[l.label,...l.taxi.map((x,i)=>{const u=String(x.url||'').trim();return {text:[`Чек ${i+1}: ${rub(num(x.amount))}`,u?' — ':'',u?{text:u,link:u,color:'#1f5fae',decoration:'underline'}:''],fontSize:8,color:'#555',margin:[0,2,0,0]}})]} : l.label;
     body.push([label,{text:l.qty,alignment:'center'},{text:l.rate!=null&&l.qty!=='1'?rub(l.rate):'',alignment:'right'},{text:rub(l.sum),alignment:'right'}]);
   });
-  body.push([{text:'Итого к оплате',bold:true,colSpan:3},{},{},{text:rub(r.total),bold:true,fontSize:12,alignment:'right'}]);
+  const tr=totalRows(r.total); tr[0][0].text=taxPct()?'Итого за смену':'Итого к оплате'; body.push(...tr);
   const rows=[]; if(name) rows.push(['Исполнитель',name]); r.meta.forEach(m=>rows.push(m)); if(contact) rows.push(['Контакт',contact]);
   return {
     pageSize:'A4',pageMargins:[48,48,48,56],defaultStyle:{font:'Roboto',fontSize:10,lineHeight:1.2},
     content:[
       {text:'Расчёт оплаты смены',fontSize:18,bold:true,margin:[0,0,0,16]},
       metaTable(rows),
-      {table:{headerRows:1,widths:['*',55,75,80],body},layout:tableLayout},
+      {table:{headerRows:1,widths:['*',55,75,80],body},layout:tableLayout(tr.length)},
       note?{text:[{text:'Комментарий: ',bold:true},note],margin:[0,16,0,0]}:'',
       PDF_NOTE
     ],
@@ -667,13 +701,13 @@ function summaryDoc(list){
   if(contact) rows.push(['Контакт',contact]);
   const body=[[{text:'№',style:'th'},{text:'Дата',style:'th'},{text:'Смена',style:'th'},{text:'Сумма',style:'th',alignment:'right'}]];
   list.forEach((s,i)=>body.push([String(i+1),fmtDate(s.date),(DAY_NAMES[s.dayType]||'')+(s.timeStr?', '+s.timeStr:''),{text:rub(s.total),alignment:'right'}]));
-  body.push([{text:'Итого к оплате',bold:true,colSpan:3},{},{},{text:rub(total),bold:true,fontSize:12,alignment:'right'}]);
+  const tr=totalRows(total); body.push(...tr);
   return {
     pageSize:'A4',pageMargins:[48,48,48,56],defaultStyle:{font:'Roboto',fontSize:10,lineHeight:1.2},
     content:[
       {text:'Сводный расчёт по проекту',fontSize:18,bold:true,margin:[0,0,0,16]},
       metaTable(rows),
-      {table:{headerRows:1,widths:[22,70,'*',90],body},layout:tableLayout},
+      {table:{headerRows:1,widths:[22,70,'*',90],body},layout:tableLayout(tr.length)},
       PDF_NOTE
     ],
     styles:{th:{bold:true,fontSize:9,color:'#6a727b'}},
@@ -748,6 +782,7 @@ function copyText(){
     if(l.taxi) l.taxi.forEach((x,i)=>out.push(`  чек ${i+1}: ${rub(num(x.amount))}${String(x.url||'').trim()?' '+String(x.url).trim():''}`));
   });
   out.push('','ИТОГО: '+rub(r.total));
+  if(taxPct()){const tx=taxOf(r.total);out.push(`Налог ИП ${pctStr(taxPct())}: +${rub(tx)}`,'ИТОГО С НАЛОГОМ: '+rub(r.total+tx));}
   navigator.clipboard.writeText(out.join('\n')).then(()=>status('Текст скопирован.'),()=>status('Не удалось скопировать автоматически.'));
 }
 
@@ -756,7 +791,7 @@ buildExtras(); loadOneOff(); writeIds(PROFILE_IDS,local.get('profile',{})); rend
 document.querySelectorAll('.col input:not([id^="receipts_"]):not([id^="customs_"]), .col select:not(#projSel), .col textarea').forEach(el=>{el.addEventListener('input',update);el.addEventListener('change',update)});
 PROJECT_IDS.forEach(id=>{$(id).addEventListener('input',onProjectField);$(id).addEventListener('change',onProjectField)});
 let profTimer=null;
-PROFILE_IDS.forEach(id=>$(id).addEventListener('input',()=>{clearTimeout(profTimer);profTimer=setTimeout(()=>backend&&backend.saveProfile(()=>readIds(PROFILE_IDS)),800)}));
+PROFILE_IDS.forEach(id=>['input','change'].forEach(ev=>$(id).addEventListener(ev,()=>{clearTimeout(profTimer);profTimer=setTimeout(()=>backend&&backend.saveProfile(()=>readIds(PROFILE_IDS)),800)})));
 $('projSel').addEventListener('change',e=>selectProject(e.target.value));
 $('newProj').addEventListener('click',newProject);
 $('delProj').addEventListener('click',deleteProject);
