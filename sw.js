@@ -1,5 +1,5 @@
 // Keeps the calculator working without internet. Bump VERSION on every release.
-const VERSION = 'smena-v4';
+const VERSION = 'smena-v5';
 const FILES = ['./', 'index.html', 'pdfmake.min.js', 'vfs_fonts.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));
@@ -11,7 +11,8 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   e.respondWith(
-    fetch(e.request).then(r => {
+    // no-cache: always ask GitHub whether the file changed, so updates show up on the next launch
+    fetch(e.request, {cache: 'no-cache'}).then(r => {
       if (r.ok && new URL(e.request.url).origin === location.origin) {
         const copy = r.clone(); caches.open(VERSION).then(c => c.put(e.request, copy));
       }
