@@ -92,6 +92,10 @@ table.br .q{display:block;color:var(--muted);font-size:12px}
           <button id="newProj" type="button">+ Новый проект</button>
         </div>
         <div class="row">
+          <label class="f"><span>ФИО исполнителя</span><input id="executor" type="text" autocomplete="name" placeholder="Фамилия Имя Отчество"></label>
+          <label class="f"><span>Телефон / контакт исполнителя</span><input id="contact" type="text" placeholder="+7 …"></label>
+        </div>
+        <div class="row">
           <label class="f"><span id="projectLbl">Название проекта</span><input id="project" type="text" placeholder="Название проекта"></label>
           <label class="f"><span>Продакшн / продюсер</span><input id="producer" type="text" placeholder="Компания, имя продюсера"></label>
         </div>
@@ -236,10 +240,6 @@ table.br .q{display:block;color:var(--muted);font-size:12px}
 
       <section class="card">
         <h2>Для PDF</h2>
-        <div class="row">
-          <label class="f"><span>Ваше имя</span><input id="name" type="text" placeholder="Имя Фамилия"></label>
-          <label class="f"><span>Телефон / контакт</span><input id="contact" type="text" placeholder="+7 …"></label>
-        </div>
         <label class="f"><span>Комментарий к смене</span><textarea id="note" rows="3" placeholder="Например: реквизиты, детали смены"></textarea></label>
       </section>
 
@@ -290,9 +290,10 @@ const EXTRAS = [
   {id:'perdiem', label:'Суточные', field:'Сумма суточных, ₽'},
 ];
 const DAY_NAMES = {shoot:'Съёмочная смена',test:'Тесты камеры / осмотр объекта',transfer:'Трансфер (командировка)',idle:'Простой в командировке',cancelWeather:'Отмена смены (weather day)',cancelOther:'Отмена смены'};
-const PROJECT_IDS = ['role',...RATE_KEYS.map(k=>'r_'+k),'prog','project','producer'];
+const PROJECT_IDS = ['executor','contact','role',...RATE_KEYS.map(k=>'r_'+k),'prog','project','producer'];
 const SHIFT_IDS = ['dayType','date','start','end','mode','plusDay','notice','midPct','arrived','lateLunch','lateLunchH','curLunch','curLunchH','gap','gapNorm','gapFact','day7','holiday','taxi','note','fixed','fixedAmt',...EXTRAS.flatMap(x=>['ex_'+x.id,'exa_'+x.id])];
-const PROFILE_IDS = ['name','contact','taxOn','taxPct'];
+const PROFILE_IDS = ['taxOn','taxPct'];
+let legacy = {}; // name/contact saved by earlier versions, used as defaults
 
 const $ = id => document.getElementById(id);
 const local = {
@@ -363,9 +364,10 @@ function writeShift(s){
   buildCustoms(); buildReceipts();
 }
 function projectFieldsFromDom(){
-  return {name:$('project').value.trim(),producer:$('producer').value.trim(),role:$('role').value.trim(),rates:R(),prog:$('prog').checked};
+  return {executor:$('executor').value.trim(),contact:$('contact').value.trim(),name:$('project').value.trim(),producer:$('producer').value.trim(),role:$('role').value.trim(),rates:R(),prog:$('prog').checked};
 }
 function projectToDom(p){
+  $('executor').value=p.executor??legacy.name??''; $('contact').value=p.contact??legacy.contact??'';
   $('project').value=p.name||''; $('producer').value=p.producer||''; $('role').value=p.role||'';
   RATE_KEYS.forEach(k=>$('r_'+k).value=(p.rates&&p.rates[k]!=null)?p.rates[k]:DEFAULT_RATES[k]);
   $('prog').checked=!!p.prog;
@@ -507,7 +509,7 @@ function renderMode(){
 }
 function renderProjSel(){
   const sel=$('projSel');
-  sel.innerHTML='<option value="">Разовая смена</option>'+projects.map(p=>`<option value="${esc(p.id)}">${esc(p.name||'Без названия')}</option>`).join('');
+  sel.innerHTML='<option value="">Разовая смена</option>'+projects.map(p=>`<option value="${esc(p.id)}">${esc(p.name||'Без названия')}${p.executor?' · '+esc(p.executor):''}</option>`).join('');
   sel.value=cur?cur.id:'';
 }
 const sortShifts = arr => arr.slice().sort((a,b)=>(a.date||'').localeCompare(b.date||'')||(a.start||'').localeCompare(b.start||''));
@@ -545,13 +547,14 @@ function renderSelTotal(){
 function saveDraft(){
   if(cur) local.set('pdraft_'+cur.id,{editingId,shift:readShift()});
   else local.set('draft',Object.assign(readShift(),readIds(PROJECT_IDS)));
-  local.set('profile',readIds(PROFILE_IDS));
+  local.set('profile',Object.assign({},legacy,readIds(PROFILE_IDS)));
 }
 function loadOneOff(){
   const d=local.get('draft',null)||{};
-  const defs=Object.assign(shiftDefaults(),{role:'1st AC',project:'',producer:'',prog:false});
+  const defs=Object.assign(shiftDefaults(),{executor:legacy.name||'',contact:legacy.contact||'',role:'1st AC',project:'',producer:'',prog:false});
   RATE_KEYS.forEach(k=>defs['r_'+k]=DEFAULT_RATES[k]);
   const all=Object.assign(defs,d);
+  if(!all.executor) all.executor=legacy.name||''; if(!all.contact) all.contact=legacy.contact||'';
   writeIds(PROJECT_IDS,all); writeShift(all);
 }
 
@@ -669,7 +672,7 @@ function totalRows(total){
 }
 const metaTable=rows=>({table:{widths:[110,'*'],body:rows.map(([k,v])=>[{text:k,color:'#6a727b'},{text:String(v)}])},layout:'noBorders',margin:[0,0,0,18]});
 function shiftDoc(){
-  const r=last, name=$('name').value.trim(), contact=$('contact').value.trim(), note=$('note').value.trim();
+  const r=last, name=$('executor').value.trim(), contact=$('contact').value.trim(), note=$('note').value.trim();
   const body=[[{text:'Статья',style:'th'},{text:'Кол-во',style:'th',alignment:'center'},{text:'Ставка',style:'th',alignment:'right'},{text:'Сумма',style:'th',alignment:'right'}]];
   r.lines.forEach(l=>{
     const label = l.taxi ? {stack:[l.label,...l.taxi.map((x,i)=>{const u=String(x.url||'').trim();return {text:[`Чек ${i+1}: ${rub(num(x.amount))}`,u?' — ':'',u?{text:u,link:u,color:'#1f5fae',decoration:'underline'}:''],fontSize:8,color:'#555',margin:[0,2,0,0]}})]} : l.label;
@@ -691,7 +694,7 @@ function shiftDoc(){
   };
 }
 function summaryDoc(list){
-  const name=$('name').value.trim(), contact=$('contact').value.trim(), total=list.reduce((a,s)=>a+s.total,0);
+  const name=$('executor').value.trim(), contact=$('contact').value.trim(), total=list.reduce((a,s)=>a+s.total,0);
   const rows=[]; if(name) rows.push(['Исполнитель',name]);
   if(cur.role) rows.push(['Должность',cur.role]);
   rows.push(['Проект',cur.name||'—']);
@@ -761,21 +764,22 @@ async function importProjects(file){
       if(i>=0){projects[i]=p;replaced++} else {projects.push(p);added++}
       backend.saveProject(p);
     });
-    if(data.profile&&!$('name').value.trim()){writeIds(PROFILE_IDS,data.profile);backend.saveProfile(()=>readIds(PROFILE_IDS));saveDraft()}
+    if(data.profile){writeIds(PROFILE_IDS,data.profile);backend.saveProfile(()=>Object.assign({},legacy,readIds(PROFILE_IDS)));saveDraft()}
     if(cur) cur=projects.find(p=>p.id===cur.id)||null;
     selectProject(cur?cur.id:'');
     status(`Импорт: новых проектов ${added}, обновлено ${replaced}.`);
   }catch(e){status('Не удалось импортировать: '+(e&&e.message||'ошибка'))}
 }
-function shiftPdf(){const p=safe($('project').value);savePdf(shiftDoc(),`Расчёт смены ${fmtDate($('date').value)}${p?' '+p:''}.pdf`)}
+function shiftPdf(){const p=safe($('project').value), w=safe($('executor').value);savePdf(shiftDoc(),`Расчёт смены ${fmtDate($('date').value)}${w?' '+w:''}${p?' '+p:''}.pdf`)}
 function summaryPdf(){
   const list=sortShifts(cur.shifts).filter(s=>selected.has(s.id)); if(!list.length) return;
   const period=list.length>1?`${fmtDate(list[0].date)}–${fmtDate(list[list.length-1].date)}`:fmtDate(list[0].date);
-  savePdf(summaryDoc(list),`Сводный расчёт ${safe(cur.name)||'проект'} ${period}.pdf`);
+  const w=safe($('executor').value);
+  savePdf(summaryDoc(list),`Сводный расчёт ${safe(cur.name)||'проект'}${w?' '+w:''} ${period}.pdf`);
 }
 function copyText(){
   const r=last, out=[];
-  if($('name').value.trim()) out.push('Исполнитель: '+$('name').value.trim());
+  if($('executor').value.trim()) out.push('Исполнитель: '+$('executor').value.trim());
   r.meta.forEach(([k,v])=>out.push(k+': '+v)); out.push('');
   r.lines.forEach(l=>{
     out.push(`${l.label}${l.qty!=='1'?' — '+l.qty+(l.rate!=null?' × '+rub(l.rate):''):''}: ${rub(l.sum)}`);
@@ -787,11 +791,12 @@ function copyText(){
 }
 
 /* ---------- boot ---------- */
-buildExtras(); loadOneOff(); writeIds(PROFILE_IDS,local.get('profile',{})); renderMode(); update();
+legacy=local.get('profile',{})||{};
+buildExtras(); loadOneOff(); writeIds(PROFILE_IDS,legacy); renderMode(); update();
 document.querySelectorAll('.col input:not([id^="receipts_"]):not([id^="customs_"]), .col select:not(#projSel), .col textarea').forEach(el=>{el.addEventListener('input',update);el.addEventListener('change',update)});
 PROJECT_IDS.forEach(id=>{$(id).addEventListener('input',onProjectField);$(id).addEventListener('change',onProjectField)});
 let profTimer=null;
-PROFILE_IDS.forEach(id=>['input','change'].forEach(ev=>$(id).addEventListener(ev,()=>{clearTimeout(profTimer);profTimer=setTimeout(()=>backend&&backend.saveProfile(()=>readIds(PROFILE_IDS)),800)})));
+PROFILE_IDS.forEach(id=>['input','change'].forEach(ev=>$(id).addEventListener(ev,()=>{clearTimeout(profTimer);profTimer=setTimeout(()=>backend&&backend.saveProfile(()=>Object.assign({},legacy,readIds(PROFILE_IDS))),800)})));
 $('projSel').addEventListener('change',e=>selectProject(e.target.value));
 $('newProj').addEventListener('click',newProject);
 $('delProj').addEventListener('click',deleteProject);
@@ -826,7 +831,7 @@ async function initStorage(){
   projects.forEach(p=>{p.shifts=p.shifts||[]});
   projects.sort((a,b)=>(a.createdAt||'').localeCompare(b.createdAt||''));
   if(backend.cloud){
-    try{const prof=await backend.loadProfile(); if(prof) writeIds(PROFILE_IDS,prof);}catch(e){}
+    try{const prof=await backend.loadProfile(); if(prof){ writeIds(PROFILE_IDS,prof); if(prof.name&&!legacy.name) legacy.name=prof.name; if(prof.contact&&!legacy.contact) legacy.contact=prof.contact; }}catch(e){}
     $('saveState').textContent='Проекты хранятся в облаке claude.ai и доступны на всех ваших устройствах.';
   } else $('saveState').textContent=OFFLINE?'Проекты хранятся на этом устройстве. На iPhone открывайте калькулятор с иконки на экране «Домой» и время от времени делайте «Экспорт проектов».':'Облако недоступно: проекты сохраняются только в этом браузере.';
   const lastId=local.get('lastProject','');
