@@ -22,6 +22,7 @@ section.card{background:var(--panel);border:1px solid var(--line);border-radius:
 h2{margin:0;font-size:15px;font-weight:600}
 .head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
 .row{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.row.wide{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
 label.f{display:flex;flex-direction:column;gap:5px;min-width:0}
 label.f>span{font-size:13px;color:var(--muted)}
 input,select,textarea{font:inherit;color:var(--ink);background:var(--field);border:1px solid var(--line);border-radius:6px;padding:9px 10px;width:100%;min-width:0}
@@ -87,13 +88,20 @@ table.br .q{display:block;color:var(--muted);font-size:12px}
     <div class="col">
 
       <section class="card">
+        <h2>Контакты исполнителя</h2>
+        <label class="f"><span>ФИО исполнителя</span><input id="executor" type="text" autocomplete="name" placeholder="Фамилия Имя Отчество"></label>
+        <div class="row wide">
+          <label class="f"><span>Телефон</span><input id="phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="+7 (900) 123-45-67"></label>
+          <label class="f"><span>Почта</span><input id="email" type="email" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" placeholder="name@mail.ru"></label>
+          <label class="f"><span>Telegram</span><input id="tg" type="text" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="@username"></label>
+        </div>
+        <p class="hint" id="contactHint">Контакты попадают в PDF. В проекте они сохраняются вместе с проектом.</p>
+      </section>
+
+      <section class="card">
         <div class="projbar">
           <label class="f"><span>Проект</span><select id="projSel"><option value="">Разовая смена</option></select></label>
           <button id="newProj" type="button">+ Новый проект</button>
-        </div>
-        <div class="row">
-          <label class="f"><span>ФИО исполнителя</span><input id="executor" type="text" autocomplete="name" placeholder="Фамилия Имя Отчество"></label>
-          <label class="f"><span>Телефон / контакт исполнителя</span><input id="contact" type="text" placeholder="+7 …"></label>
         </div>
         <div class="row">
           <label class="f"><span id="projectLbl">Название проекта</span><input id="project" type="text" placeholder="Название проекта"></label>
@@ -290,10 +298,44 @@ const EXTRAS = [
   {id:'perdiem', label:'Суточные', field:'Сумма суточных, ₽'},
 ];
 const DAY_NAMES = {shoot:'Съёмочная смена',test:'Тесты камеры / осмотр объекта',transfer:'Трансфер (командировка)',idle:'Простой в командировке',cancelWeather:'Отмена смены (weather day)',cancelOther:'Отмена смены'};
-const PROJECT_IDS = ['executor','contact','role',...RATE_KEYS.map(k=>'r_'+k),'prog','project','producer'];
+const PROJECT_IDS = ['executor','phone','email','tg','role',...RATE_KEYS.map(k=>'r_'+k),'prog','project','producer'];
 const SHIFT_IDS = ['dayType','date','start','end','mode','plusDay','notice','midPct','arrived','lateLunch','lateLunchH','curLunch','curLunchH','gap','gapNorm','gapFact','day7','holiday','taxi','note','fixed','fixedAmt',...EXTRAS.flatMap(x=>['ex_'+x.id,'exa_'+x.id])];
 const PROFILE_IDS = ['taxOn','taxPct'];
 let legacy = {}; // name/contact saved by earlier versions, used as defaults
+
+/* ---------- contact formatting ---------- */
+// "+7 (XXX) XXX-XX-XX" built from whatever digits were typed; a leading 7 or 8 is the country code
+function formatPhone(raw){
+  let d=String(raw||'').replace(/\D/g,'');
+  if(d[0]==='7'||d[0]==='8') d=d.slice(1);
+  d=d.slice(0,10);
+  if(!d) return '';
+  let out='+7 ('+d.slice(0,3);
+  if(d.length>=3) out+=')';
+  if(d.length>3) out+=' '+d.slice(3,6);
+  if(d.length>6) out+='-'+d.slice(6,8);
+  if(d.length>8) out+='-'+d.slice(8,10);
+  return out;
+}
+function formatTg(raw){
+  let v=String(raw||'').trim().replace(/^https?:\/\//,'').replace(/^(www\.)?(t\.me|telegram\.me)\//,'').replace(/\s+/g,'');
+  if(!v) return '';
+  return v[0]==='@'?v:'@'+v;
+}
+// old single "contact" field: sort it into phone / e-mail / telegram
+function splitContact(c){
+  c=String(c||'').trim(); const o={phone:'',email:'',tg:''};
+  if(!c) return o;
+  if(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c)) o.email=c;
+  else if(c.replace(/\D/g,'').length>=10) o.phone=formatPhone(c);
+  else o.tg=formatTg(c);
+  return o;
+}
+function contactRows(){
+  const rows=[], ph=$('phone').value.trim(), em=$('email').value.trim(), tg=$('tg').value.trim();
+  if(ph&&ph!=='+7 (') rows.push(['Телефон',ph]); if(em) rows.push(['Почта',em]); if(tg) rows.push(['Telegram',tg]);
+  return rows;
+}
 
 const $ = id => document.getElementById(id);
 const local = {
@@ -364,10 +406,12 @@ function writeShift(s){
   buildCustoms(); buildReceipts();
 }
 function projectFieldsFromDom(){
-  return {executor:$('executor').value.trim(),contact:$('contact').value.trim(),name:$('project').value.trim(),producer:$('producer').value.trim(),role:$('role').value.trim(),rates:R(),prog:$('prog').checked};
+  return {executor:$('executor').value.trim(),phone:$('phone').value.trim(),email:$('email').value.trim(),tg:$('tg').value.trim(),name:$('project').value.trim(),producer:$('producer').value.trim(),role:$('role').value.trim(),rates:R(),prog:$('prog').checked};
 }
 function projectToDom(p){
-  $('executor').value=p.executor??legacy.name??''; $('contact').value=p.contact??legacy.contact??'';
+  $('executor').value=p.executor??legacy.name??'';
+  const old=splitContact(p.contact??legacy.contact);
+  $('phone').value=p.phone??old.phone; $('email').value=p.email??old.email; $('tg').value=p.tg??old.tg;
   $('project').value=p.name||''; $('producer').value=p.producer||''; $('role').value=p.role||'';
   RATE_KEYS.forEach(k=>$('r_'+k).value=(p.rates&&p.rates[k]!=null)?p.rates[k]:DEFAULT_RATES[k]);
   $('prog').checked=!!p.prog;
@@ -551,10 +595,11 @@ function saveDraft(){
 }
 function loadOneOff(){
   const d=local.get('draft',null)||{};
-  const defs=Object.assign(shiftDefaults(),{executor:legacy.name||'',contact:legacy.contact||'',role:'1st AC',project:'',producer:'',prog:false});
+  const defs=Object.assign(shiftDefaults(),{executor:legacy.name||'',phone:'',email:'',tg:'',role:'1st AC',project:'',producer:'',prog:false});
   RATE_KEYS.forEach(k=>defs['r_'+k]=DEFAULT_RATES[k]);
   const all=Object.assign(defs,d);
-  if(!all.executor) all.executor=legacy.name||''; if(!all.contact) all.contact=legacy.contact||'';
+  if(!all.executor) all.executor=legacy.name||'';
+  if(!all.phone&&!all.email&&!all.tg) Object.assign(all,splitContact(all.contact||legacy.contact));
   writeIds(PROJECT_IDS,all); writeShift(all);
 }
 
@@ -672,14 +717,14 @@ function totalRows(total){
 }
 const metaTable=rows=>({table:{widths:[110,'*'],body:rows.map(([k,v])=>[{text:k,color:'#6a727b'},{text:String(v)}])},layout:'noBorders',margin:[0,0,0,18]});
 function shiftDoc(){
-  const r=last, name=$('executor').value.trim(), contact=$('contact').value.trim(), note=$('note').value.trim();
+  const r=last, name=$('executor').value.trim(), note=$('note').value.trim();
   const body=[[{text:'Статья',style:'th'},{text:'Кол-во',style:'th',alignment:'center'},{text:'Ставка',style:'th',alignment:'right'},{text:'Сумма',style:'th',alignment:'right'}]];
   r.lines.forEach(l=>{
     const label = l.taxi ? {stack:[l.label,...l.taxi.map((x,i)=>{const u=String(x.url||'').trim();return {text:[`Чек ${i+1}: ${rub(num(x.amount))}`,u?' — ':'',u?{text:u,link:u,color:'#1f5fae',decoration:'underline'}:''],fontSize:8,color:'#555',margin:[0,2,0,0]}})]} : l.label;
     body.push([label,{text:l.qty,alignment:'center'},{text:l.rate!=null&&l.qty!=='1'?rub(l.rate):'',alignment:'right'},{text:rub(l.sum),alignment:'right'}]);
   });
   const tr=totalRows(r.total); tr[0][0].text=taxPct()?'Итого за смену':'Итого к оплате'; body.push(...tr);
-  const rows=[]; if(name) rows.push(['Исполнитель',name]); r.meta.forEach(m=>rows.push(m)); if(contact) rows.push(['Контакт',contact]);
+  const rows=[]; if(name) rows.push(['Исполнитель',name]); rows.push(...contactRows()); r.meta.forEach(m=>rows.push(m));
   return {
     pageSize:'A4',pageMargins:[48,48,48,56],defaultStyle:{font:'Roboto',fontSize:10,lineHeight:1.2},
     content:[
@@ -694,14 +739,13 @@ function shiftDoc(){
   };
 }
 function summaryDoc(list){
-  const name=$('executor').value.trim(), contact=$('contact').value.trim(), total=list.reduce((a,s)=>a+s.total,0);
+  const name=$('executor').value.trim(), total=list.reduce((a,s)=>a+s.total,0);
   const rows=[]; if(name) rows.push(['Исполнитель',name]);
   if(cur.role) rows.push(['Должность',cur.role]);
   rows.push(['Проект',cur.name||'—']);
   if(cur.producer) rows.push(['Продакшн',cur.producer]);
   rows.push(['Период',list.length>1?`${fmtDate(list[0].date)} – ${fmtDate(list[list.length-1].date)}`:fmtDate(list[0].date)]);
   rows.push(['Смен',String(list.length)]);
-  if(contact) rows.push(['Контакт',contact]);
   const body=[[{text:'№',style:'th'},{text:'Дата',style:'th'},{text:'Смена',style:'th'},{text:'Сумма',style:'th',alignment:'right'}]];
   list.forEach((s,i)=>body.push([String(i+1),fmtDate(s.date),(DAY_NAMES[s.dayType]||'')+(s.timeStr?', '+s.timeStr:''),{text:rub(s.total),alignment:'right'}]));
   const tr=totalRows(total); body.push(...tr);
@@ -780,6 +824,7 @@ function summaryPdf(){
 function copyText(){
   const r=last, out=[];
   if($('executor').value.trim()) out.push('Исполнитель: '+$('executor').value.trim());
+  contactRows().forEach(([k,v])=>out.push(k+': '+v));
   r.meta.forEach(([k,v])=>out.push(k+': '+v)); out.push('');
   r.lines.forEach(l=>{
     out.push(`${l.label}${l.qty!=='1'?' — '+l.qty+(l.rate!=null?' × '+rub(l.rate):''):''}: ${rub(l.sum)}`);
@@ -798,6 +843,19 @@ PROJECT_IDS.forEach(id=>{$(id).addEventListener('input',onProjectField);$(id).ad
 let profTimer=null;
 PROFILE_IDS.forEach(id=>['input','change'].forEach(ev=>$(id).addEventListener(ev,()=>{clearTimeout(profTimer);profTimer=setTimeout(()=>backend&&backend.saveProfile(()=>Object.assign({},legacy,readIds(PROFILE_IDS))),800)})));
 $('projSel').addEventListener('change',e=>selectProject(e.target.value));
+$('phone').addEventListener('focus',e=>{if(!e.target.value) e.target.value='+7 (';e.target.dataset.prev=e.target.value});
+$('phone').addEventListener('blur',e=>{if(e.target.value==='+7 ('){e.target.value='';onProjectField();saveDraft()}});
+$('phone').addEventListener('input',e=>{
+  const el=e.target, prevDigits=(el.dataset.prev||'').replace(/\D/g,'');
+  let v=el.value;
+  // backspace over a bracket, space or dash removes the digit before it
+  if(e.inputType&&e.inputType.startsWith('delete')&&v.replace(/\D/g,'')===prevDigits) v=v.replace(/\d(?=\D*$)/,'');
+  el.value=formatPhone(v)||(e.inputType&&e.inputType.startsWith('delete')?'':'+7 (');
+  el.dataset.prev=el.value;
+  onProjectField(); update();
+});
+$('tg').addEventListener('blur',e=>{const v=formatTg(e.target.value);if(v!==e.target.value){e.target.value=v;onProjectField();saveDraft();update()}});
+$('email').addEventListener('blur',e=>{e.target.value=e.target.value.trim()});
 $('newProj').addEventListener('click',newProject);
 $('delProj').addEventListener('click',deleteProject);
 $('saveShift').addEventListener('click',saveShift);
